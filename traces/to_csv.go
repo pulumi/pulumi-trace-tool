@@ -1,4 +1,4 @@
-package main
+package traces
 
 import (
 	"bufio"
@@ -8,7 +8,7 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
-func toCsv(inputTraceFiles []string, outputCsvFile string, filenameColumn string) error {
+func ToCsv(inputTraceFiles []string, outputCsvFile string, filenameColumn string) error {
 	annotationNames, err := detectAnnotationNames(inputTraceFiles)
 	if err != nil {
 		return err

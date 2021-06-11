@@ -1,4 +1,4 @@
-package main
+package traces
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func metrics(csvFile string, filenameColumn string) error {
+func Metrics(csvFile string, filenameColumn string) error {
 
 	f, err := os.Open(csvFile)
 	if err != nil {

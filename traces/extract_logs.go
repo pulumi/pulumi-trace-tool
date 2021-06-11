@@ -1,4 +1,4 @@
-package main
+package traces
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
-func extractLogs(inputFilePath string) error {
+func ExtractLogs(inputFilePath string) error {
 	memStore, err := readMemoryStore(inputFilePath)
 	if err != nil {
 		return err

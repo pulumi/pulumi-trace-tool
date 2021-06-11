@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	tr "github.com/pulumi/pulumi-trace-tool/traces"
 )
 
 type command struct {
@@ -25,7 +27,7 @@ func toCsvCommand(flags *flag.FlagSet, args []string) error {
 
 	traceFiles := flags.Args()
 
-	return toCsv(traceFiles, outputCsvFile, filenameColumn)
+	return tr.ToCsv(traceFiles, outputCsvFile, filenameColumn)
 }
 
 func removeLogsCommand(flags *flag.FlagSet, args []string) error {
@@ -38,7 +40,7 @@ func removeLogsCommand(flags *flag.FlagSet, args []string) error {
 		return err
 	}
 
-	return removeLogs(inputFilePath, outputFilePath)
+	return tr.RemoveLogs(inputFilePath, outputFilePath)
 }
 
 func extractLogsCommand(flags *flag.FlagSet, args []string) error {
@@ -47,7 +49,7 @@ func extractLogsCommand(flags *flag.FlagSet, args []string) error {
 	}
 
 	for _, f := range flags.Args() {
-		if err := extractLogs(f); err != nil {
+		if err := tr.ExtractLogs(f); err != nil {
 			return err
 		}
 	}
@@ -65,7 +67,7 @@ func metricsCommand(flags *flag.FlagSet, args []string) error {
 		return err
 	}
 
-	return metrics(csvFile, filenameColumn)
+	return tr.Metrics(csvFile, filenameColumn)
 }
 
 var commands map[string]command = map[string]command{

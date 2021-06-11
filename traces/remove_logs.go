@@ -1,10 +1,10 @@
-package main
+package traces
 
 import (
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
-func removeLogs(inputFilePath, outputFilePath string) error {
+func RemoveLogs(inputFilePath, outputFilePath string) error {
 	memStore, err := readMemoryStore(inputFilePath)
 	if err != nil {
 		return err
