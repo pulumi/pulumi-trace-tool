@@ -8,16 +8,16 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
-func toCsv(inputTraceFiles []string, outputCsvFile string) error {
+func toCsv(inputTraceFiles []string, outputCsvFile string, filenameColumn string) error {
 	annotationNames, err := detectAnnotationNames(inputTraceFiles)
 	if err != nil {
 		return err
 	}
 
-	return writeTracesCsv(annotationNames, inputTraceFiles, outputCsvFile)
+	return writeTracesCsv(annotationNames, inputTraceFiles, outputCsvFile, filenameColumn)
 }
 
-func writeTracesCsv(annotationNames []string, inputTraceFiles []string, outputCsvFile string) error {
+func writeTracesCsv(annotationNames []string, inputTraceFiles []string, outputCsvFile, filenameColumn string) error {
 	f, err := os.Create(outputCsvFile)
 	if err != nil {
 		return err
@@ -28,8 +28,9 @@ func writeTracesCsv(annotationNames []string, inputTraceFiles []string, outputCs
 	w := csv.NewWriter(out)
 
 	var columns []string
-	for _, a := range annotationNames {
-		columns = append(columns, a)
+	columns = append(columns, annotationNames...)
+	if filenameColumn != "" {
+		columns = append(columns, filenameColumn)
 	}
 
 	err = w.Write(columns)
@@ -38,22 +39,27 @@ func writeTracesCsv(annotationNames []string, inputTraceFiles []string, outputCs
 	}
 
 	i := 0
-	writeTrace := func(t *appdash.Trace) error {
-		i = i + 1
-		if i%1024 == 0 {
-			w.Flush()
-		}
-		var values []string
-		m := t.Span.Annotations.StringMap()
-
-		for _, a := range annotationNames {
-			values = append(values, m[a])
-		}
-
-		return w.Write(values)
-	}
 
 	for _, inputTraceFile := range inputTraceFiles {
+		writeTrace := func(t *appdash.Trace) error {
+			i = i + 1
+			if i%1024 == 0 {
+				w.Flush()
+			}
+			var values []string
+			m := t.Span.Annotations.StringMap()
+
+			for _, a := range annotationNames {
+				values = append(values, m[a])
+			}
+
+			if filenameColumn != "" {
+				values = append(values, inputTraceFile)
+			}
+
+			return w.Write(values)
+		}
+
 		if err := walkTracesFromFile(inputTraceFile, writeTrace); err != nil {
 			return err
 		}

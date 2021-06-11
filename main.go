@@ -14,9 +14,10 @@ type command struct {
 }
 
 func toCsvCommand(flags *flag.FlagSet, args []string) error {
-	var outputCsvFile string
+	var outputCsvFile, filenameColumn string
 
 	flags.StringVar(&outputCsvFile, "csv", "", "Path where to write the CSV output file")
+	flags.StringVar(&filenameColumn, "filenamecolumn", "", "Column name to write trace filename to")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -24,7 +25,7 @@ func toCsvCommand(flags *flag.FlagSet, args []string) error {
 
 	traceFiles := flags.Args()
 
-	return toCsv(traceFiles, outputCsvFile)
+	return toCsv(traceFiles, outputCsvFile, filenameColumn)
 }
 
 func removeLogsCommand(flags *flag.FlagSet, args []string) error {
