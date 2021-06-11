@@ -8,17 +8,16 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
-func toCsv(inputTraceFile, outputCsvFile string) error {
-
-	annotationNames, err := detectAnnotationNames(inputTraceFile)
+func toCsv(inputTraceFiles []string, outputCsvFile string) error {
+	annotationNames, err := detectAnnotationNames(inputTraceFiles)
 	if err != nil {
 		return err
 	}
 
-	return writeTracesCsv(annotationNames, inputTraceFile, outputCsvFile)
+	return writeTracesCsv(annotationNames, inputTraceFiles, outputCsvFile)
 }
 
-func writeTracesCsv(annotationNames []string, inputTraceFile, outputCsvFile string) error {
+func writeTracesCsv(annotationNames []string, inputTraceFiles []string, outputCsvFile string) error {
 	f, err := os.Create(outputCsvFile)
 	if err != nil {
 		return err
@@ -54,15 +53,17 @@ func writeTracesCsv(annotationNames []string, inputTraceFile, outputCsvFile stri
 		return w.Write(values)
 	}
 
-	if err := walkTracesFromFile(inputTraceFile, writeTrace); err != nil {
-		return err
+	for _, inputTraceFile := range inputTraceFiles {
+		if err := walkTracesFromFile(inputTraceFile, writeTrace); err != nil {
+			return err
+		}
 	}
 
 	w.Flush()
 	return nil
 }
 
-func detectAnnotationNames(inputTraceFile string) ([]string, error) {
+func detectAnnotationNames(inputTraceFiles []string) ([]string, error) {
 	annotations := make(map[string]int)
 
 	detectAnnotations := func(t *appdash.Trace) error {
@@ -72,8 +73,10 @@ func detectAnnotationNames(inputTraceFile string) ([]string, error) {
 		return nil
 	}
 
-	if err := walkTracesFromFile(inputTraceFile, detectAnnotations); err != nil {
-		return nil, err
+	for _, inputTraceFile := range inputTraceFiles {
+		if err := walkTracesFromFile(inputTraceFile, detectAnnotations); err != nil {
+			return nil, err
+		}
 	}
 
 	var res []string

@@ -69,3 +69,12 @@ func readMemoryStore(filePath string) (*appdash.MemoryStore, error) {
 
 	return memStore, nil
 }
+
+func isEngineLogTrace(trace *appdash.Trace) bool {
+	for _, ann := range trace.Annotations {
+		if ann.Key == "Name" && string(ann.Value) == "/pulumirpc.Engine/Log" {
+			return true
+		}
+	}
+	return false
+}
