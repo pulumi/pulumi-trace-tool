@@ -67,7 +67,7 @@ func metricsCommand(flags *flag.FlagSet, args []string) error {
 		return err
 	}
 
-	return tr.Metrics(csvFile, filenameColumn)
+	return tr.Metrics(csvFile, filenameColumn, os.Stdout)
 }
 
 var commands map[string]command = map[string]command{

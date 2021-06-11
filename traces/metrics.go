@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Metrics(csvFile string, filenameColumn string) error {
+func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 
 	f, err := os.Open(csvFile)
 	if err != nil {
@@ -31,7 +31,7 @@ func Metrics(csvFile string, filenameColumn string) error {
 	inColumns := make(map[string]int)
 	outColumns := make(map[string]int)
 
-	cw := csv.NewWriter(os.Stdout)
+	cw := csv.NewWriter(writer)
 	for i, h := range header {
 		inColumns[h] = i
 		outColumns[filenameColumn] = len(outColumns) - 1
