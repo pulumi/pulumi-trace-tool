@@ -17,7 +17,7 @@ func toCsvCommand(flags *flag.FlagSet, args []string) error {
 	var outputCsvFile, filenameColumn string
 
 	flags.StringVar(&outputCsvFile, "csv", "", "Path where to write the CSV output file")
-	flags.StringVar(&filenameColumn, "filenamecolumn", "", "Column name to write trace filename to")
+	flags.StringVar(&filenameColumn, "filenamecolumn", "tracefile", "Column name to write trace filename to")
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -55,10 +55,24 @@ func extractLogsCommand(flags *flag.FlagSet, args []string) error {
 	return nil
 }
 
+func metricsCommand(flags *flag.FlagSet, args []string) error {
+	var csvFile, filenameColumn string
+
+	flags.StringVar(&csvFile, "csv", "", "CSV file with data to aggreate into metrics")
+	flags.StringVar(&filenameColumn, "filenamecolumn", "tracefile", "Column name where trace filename was recorded")
+
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	return metrics(csvFile, filenameColumn)
+}
+
 var commands map[string]command = map[string]command{
 	"tocsv":       command{"tocsv", toCsvCommand},
 	"removelogs":  command{"removelogs", removeLogsCommand},
 	"extractlogs": command{"extractlogs", extractLogsCommand},
+	"metrics":     command{"metrics", metricsCommand},
 }
 
 func main() {
