@@ -31,11 +31,23 @@ func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 	inColumns := make(map[string]int)
 	outColumns := make(map[string]int)
 
+	addInColumn := func(name string) {
+		n := len(inColumns)
+		inColumns[name] = n
+	}
+
+	addOutColumn := func(name string) {
+		n := len(outColumns)
+		outColumns[name] = n
+	}
+
+	addOutColumn(filenameColumn)
+	addOutColumn("time_ms")
+
 	cw := csv.NewWriter(writer)
-	for i, h := range header {
-		inColumns[h] = i
-		outColumns[filenameColumn] = len(outColumns) - 1
-		outColumns["time_ms"] = len(outColumns) - 1
+
+	for _, h := range header {
+		addInColumn(h)
 
 		if strings.HasPrefix(h, "MemStats.") ||
 			strings.HasPrefix(h, "benchmark_") ||
@@ -44,7 +56,8 @@ func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 			h == "os.Args" ||
 			h == "Span.Start" ||
 			h == "Span.End" {
-			outColumns[h] = len(outColumns) - 1
+
+			addOutColumn(h)
 		}
 	}
 
