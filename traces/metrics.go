@@ -20,118 +20,145 @@ func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 		}
 	}
 
-	var metrics []map[string]string
+	files := make(map[string]string)
 
-	var logOverhead, apiOverhead, engDuration time.Duration
-	var engStart time.Time
-	var pulumiApiEndpoint string
-
-	// First pass: precompute some metrics
+	// find set of source files in the data
 	err := readLargeCsvFile(csvFile, func(row map[string]string) error {
-
-		if row["Name"] == "/pulumirpc.Engine/Log" {
-			dur, err := spanDuration(row)
-			if err != nil {
-				return err
-			}
-			logOverhead += dur
+		f := row[filenameColumn]
+		if f != "" {
+			files[f] = f
 		}
-
-		if row["Name"] == "pulumi-plan" {
-			t0, err := spanStart(row)
-			if err != nil {
-				return err
-			}
-			engStart = t0
-
-			dur, err := spanDuration(row)
-			if err != nil {
-				return err
-			}
-			engDuration = dur
-		}
-
-		if row["api"] != "" {
-			pulumiApiEndpoint = row["api"]
-			dur, err := spanDuration(row)
-			if err != nil {
-				return err
-			}
-			apiOverhead += dur
-		}
-
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
 
-	// total_time_ms = df[df['Name'] == 'pulumi']['time_ms'].iloc[0]
-	// plan_time_ms = df[df['Name'] == 'pulumi-plan']['time_ms'].iloc[0]
+	var metrics []map[string]string
 
-	// api_ms = df[df['api'] == 'https://api.pulumi.com']['time_ms'].sum()
-	// log_ms = df[df['Name'] == '/pulumirpc.Engine/Log']['time_ms'].sum()
+	for f := range files {
 
-	// Second pass: collect metrics
-	err = readLargeCsvFile(csvFile, func(row map[string]string) error {
+		var logOverhead, apiOverhead, engDuration time.Duration
+		var engStart time.Time
+		var haveEngStart bool
+		var pulumiApiEndpoint string
 
-		// Detect the all-encompassing span collected from the
-		// top-level `pulumi` invocation.
+		// precompute metrics
+		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
 
-		if row["Name"] == "pulumi" {
-			m := make(map[string]string)
-
-			t0, err := spanStart(row)
-			if err != nil {
-				return err
+			if row[filenameColumn] != f {
+				return nil
 			}
 
-			// this is coming from `pulumi` CLI process, not a plugin
-			m[pulumi_process] = "pulumi"
-
-			// compute duration
-			dur, err := spanDuration(row)
-			if err != nil {
-				return err
-			}
-			m[time_total_ms] = ms(dur)
-
-			// copy labels if found in aliases
-			for k, v := range row {
-				col, includeCol := invAliases[k]
-				if includeCol {
-					m[col] = v
+			if row["Name"] == "/pulumirpc.Engine/Log" {
+				dur, err := spanDuration(row)
+				if err != nil {
+					return err
 				}
+				logOverhead += dur
 			}
 
-			// infer benchmark phase; example inputs:
-			//
-			// filename=aws-go-s3-folder-pulumi-update-initial.trace
-			// benchmark_name=aws-go-s3-folder
-			m[benchmark_phase] = ""
-			if strings.HasPrefix(row[filenameColumn], m[benchmark_name]+"-") {
-				s := strings.TrimPrefix(row[filenameColumn], m[benchmark_name]+"-")
-				if strings.HasSuffix(s, ".trace") {
-					s = strings.TrimSuffix(s, ".trace")
-					m[benchmark_phase] = s
+			if row["Name"] == "pulumi-plan" {
+				t0, err := spanStart(row)
+				if err != nil {
+					return err
 				}
+				engStart = t0
+				haveEngStart = true
+
+				dur, err := spanDuration(row)
+				if err != nil {
+					return err
+				}
+				engDuration = dur
 			}
 
-			// use pre-computed things here
-			m[time_engine_ms] = ms(engDuration)
-			m[pulumi_api] = pulumiApiEndpoint
-			m[time_pulumi_api_ms] = ms(apiOverhead)
-			m[time_log_overhead_ms] = ms(logOverhead)
-			m[time_to_engine_ms] = ms(engStart.Sub(t0))
+			if row["api"] != "" {
+				pulumiApiEndpoint = row["api"]
+				dur, err := spanDuration(row)
+				if err != nil {
+					return err
+				}
+				apiOverhead += dur
+			}
 
-			metrics = append(metrics, m)
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 
-		return nil
-	})
+		// emit metrics
+		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
 
-	if err != nil {
-		return err
+			if row[filenameColumn] != f {
+				return nil
+			}
+
+			// Detect the all-encompassing span collected from the
+			// top-level `pulumi` invocation.
+
+			if row["Name"] == "pulumi" {
+				m := make(map[string]string)
+
+				t0, err := spanStart(row)
+				if err != nil {
+					return err
+				}
+
+				// this is coming from `pulumi` CLI process, not a plugin
+				m[pulumi_process] = "pulumi"
+
+				// compute duration
+				dur, err := spanDuration(row)
+				if err != nil {
+					return err
+				}
+				m[time_total_ms] = ms(dur)
+
+				// copy labels if found in aliases
+				for k, v := range row {
+					col, includeCol := invAliases[k]
+					if includeCol {
+						m[col] = v
+					}
+				}
+
+				// infer benchmark phase; example inputs:
+				//
+				// filename=aws-go-s3-folder-pulumi-update-initial.trace
+				// benchmark_name=aws-go-s3-folder
+				m[benchmark_phase] = ""
+				if strings.HasPrefix(row[filenameColumn], m[benchmark_name]+"-") {
+					s := strings.TrimPrefix(row[filenameColumn], m[benchmark_name]+"-")
+					if strings.HasSuffix(s, ".trace") {
+						s = strings.TrimSuffix(s, ".trace")
+						m[benchmark_phase] = s
+					}
+				}
+
+				// use pre-computed things here
+				m[time_engine_ms] = ms(engDuration)
+				m[pulumi_api] = pulumiApiEndpoint
+				m[time_pulumi_api_ms] = ms(apiOverhead)
+				m[time_log_overhead_ms] = ms(logOverhead)
+
+				if haveEngStart {
+					m[time_to_engine_ms] = ms(engStart.Sub(t0))
+				} else {
+					m[time_to_engine_ms] = ""
+				}
+
+				metrics = append(metrics, m)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := writeSmallCsvFile(metrics, writer); err != nil {

@@ -27,7 +27,6 @@ func metricAliases() map[string][]string {
 		"benchmark_provider":    {"benchmark_provider", "benchmark_cloud"},
 		"benchmark_repo":        {"repo"},
 		"benchmark_runtime":     {"benchmark_language", "benchmark_runtime"},
-		"go_num_cgo_call":       {"runtime.NumCgoCall"},
 		"mem_frees":             {"MemStats.Frees"},
 		"mem_heap_alloc_max":    {"MemStats.HeapAlloc.Max"},
 		"mem_heap_idle_max":     {"MemStats.HeapIdle.Max"},
