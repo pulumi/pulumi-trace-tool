@@ -18,6 +18,9 @@ const benchmark_phase string = "benchmark_phase"
 // Process such as `pulumi` or `pulumi-resource-aws` the data is coming from.
 const pulumi_process string = "pulumi_process"
 
+// Timestamp indicating the start time of the benchmark, in RFC3339.
+const benchmark_start = "benchmark_start"
+
 // Maps canonical column names as they should appear in `merics.csv`
 // to a list of possible aliases how they appear in the `traces.csv`
 // files and binary traces.

@@ -107,6 +107,8 @@ func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 					return err
 				}
 
+				m[benchmark_start] = row["Span.Start"]
+
 				// this is coming from `pulumi` CLI process, not a plugin
 				m[pulumi_process] = "pulumi"
 
