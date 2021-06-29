@@ -10,7 +10,31 @@ import (
 	"time"
 )
 
-func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
+type MetricsSink struct {
+	writeMetrics func(data []map[string]string) error
+}
+
+func NewCsvMetricsSink(writer io.Writer) MetricsSink {
+	return MetricsSink{
+		func(data []map[string]string) error {
+			return writeMetricsToCsvWriter(data, writer)
+		},
+	}
+}
+
+func NewParquetFileMetricsSink(filePath string) MetricsSink {
+	return MetricsSink{
+		func(data []map[string]string) error {
+			records, err := parseParquetRecords(data)
+			if err != nil {
+				return err
+			}
+			return writeParquetRecords(filePath, records)
+		},
+	}
+}
+
+func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 	aliases := metricAliases()
 
 	invAliases := make(map[string]string)
@@ -163,7 +187,7 @@ func Metrics(csvFile string, filenameColumn string, writer io.Writer) error {
 		}
 	}
 
-	if err := writeSmallCsvFile(metrics, writer); err != nil {
+	if err := sink.writeMetrics(metrics); err != nil {
 		return err
 	}
 
@@ -233,7 +257,7 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 	return nil
 }
 
-func writeSmallCsvFile(data []map[string]string, writer io.Writer) error {
+func writeMetricsToCsvWriter(data []map[string]string, writer io.Writer) error {
 	csvWriter := csv.NewWriter(writer)
 	defer csvWriter.Flush()
 

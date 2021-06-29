@@ -58,16 +58,23 @@ func extractLogsCommand(flags *flag.FlagSet, args []string) error {
 }
 
 func metricsCommand(flags *flag.FlagSet, args []string) error {
-	var csvFile, filenameColumn string
+	var csvFile, filenameColumn, parquetFile string
 
 	flags.StringVar(&csvFile, "csv", "", "CSV file with data to aggreate into metrics")
 	flags.StringVar(&filenameColumn, "filenamecolumn", "tracefile", "Column name where trace filename was recorded")
+	flags.StringVar(&parquetFile, "parquet", "", "Path to write metrics in parquet format to; by default, write CSV to stdout")
 
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 
-	return tr.Metrics(csvFile, filenameColumn, os.Stdout)
+	var sink tr.MetricsSink
+	if parquetFile != "" {
+		sink = tr.NewParquetFileMetricsSink(parquetFile)
+	} else {
+		sink = tr.NewCsvMetricsSink(os.Stdout)
+	}
+	return tr.Metrics(csvFile, filenameColumn, sink)
 }
 
 var commands map[string]command = map[string]command{

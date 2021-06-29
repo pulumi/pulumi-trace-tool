@@ -122,7 +122,7 @@ func (benchmark *Benchmark) CommandArgs(commandName string) []string {
 }
 
 // If tracing is enabled, finds all *.trace files in `TracingDir` and
-// computes metrics, producing `TracingDir/merics.csv`.
+// computes metrics, producing `TracingDir/merics.parquet.snappy`.
 func ComputeMetrics() error {
 	if !IsTracingEnabled() {
 		return nil
@@ -158,12 +158,7 @@ func ComputeMetrics() error {
 		return err
 	}
 
-	f, err := os.Create("metrics.csv")
-	if err != nil {
-		return err
-	}
-
-	if err := Metrics("traces.csv", "filename", f); err != nil {
+	if err := Metrics("traces.csv", "filename", NewParquetFileMetricsSink("metrics.parquet.snappy")); err != nil {
 		return err
 	}
 
