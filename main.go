@@ -30,6 +30,19 @@ func toCsvCommand(flags *flag.FlagSet, args []string) error {
 	return tr.ToCsv(traceFiles, outputCsvFile, filenameColumn)
 }
 
+func toParquetCommand(flags *flag.FlagSet, args []string) error {
+	var inputCsvFile, outputParquetFile string
+
+	flags.StringVar(&inputCsvFile, "csv", "", "Path where read the CSV metrics input file")
+	flags.StringVar(&outputParquetFile, "parquet", "", "Path where to write the Parquet file")
+
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	return tr.ToParquet(inputCsvFile, outputParquetFile)
+}
+
 func removeLogsCommand(flags *flag.FlagSet, args []string) error {
 	var inputFilePath, outputFilePath string
 
@@ -79,6 +92,7 @@ func metricsCommand(flags *flag.FlagSet, args []string) error {
 
 var commands map[string]command = map[string]command{
 	"tocsv":       command{"tocsv", toCsvCommand},
+	"toparquet":   command{"toparquet", toParquetCommand},
 	"removelogs":  command{"removelogs", removeLogsCommand},
 	"extractlogs": command{"extractlogs", extractLogsCommand},
 	"metrics":     command{"metrics", metricsCommand},
