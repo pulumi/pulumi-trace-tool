@@ -20,6 +20,7 @@ type ParquetRecord struct {
 	Benchmark_phase       *string `parquet:"name=benchmark_phase, type=BYTE_ARRAY, convertedtype=UTF8"`
 	Benchmark_provider    *string `parquet:"name=benchmark_provider, type=BYTE_ARRAY, convertedtype=UTF8"`
 	Benchmark_repo        *string `parquet:"name=benchmark_repo, type=BYTE_ARRAY, convertedtype=UTF8"`
+	Benchmark_runtime     *string `parquet:"name=benchmark_runtime, type=BYTE_ARRAY, convertedtype=UTF8"`
 	Benchmark_start       *string `parquet:"name=benchmark_start, type=BYTE_ARRAY, convertedtype=UTF8"`
 	Mem_frees             *int64  `parquet:"name=mem_frees, type=INT64"`
 	Mem_heap_alloc_max    *int64  `parquet:"name=mem_heap_alloc_max, type=INT64"`
@@ -85,6 +86,7 @@ func parseParquetRecord(dataRow map[string]string) (ParquetRecord, error) {
 	str(&r.Benchmark_phase, "benchmark_phase")
 	str(&r.Benchmark_provider, "benchmark_provider")
 	str(&r.Benchmark_repo, "benchmark_repo")
+	str(&r.Benchmark_runtime, "benchmark_runtime")
 	str(&r.Benchmark_start, "benchmark_start")
 	str(&r.Pulumi_api, "pulumi_api")
 	str(&r.Pulumi_commandline, "pulumi_commandline")
