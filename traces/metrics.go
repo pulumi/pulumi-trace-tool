@@ -197,6 +197,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 func spanStart(row map[string]string) (time.Time, error) {
 	spanStart, err := parseTime(row["Span.Start"])
 	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.Start time: %w", err)
 		return time.Time{}, err
 	}
 	return spanStart, nil
@@ -209,8 +210,8 @@ func spanDuration(row map[string]string) (time.Duration, error) {
 	}
 	spanEnd, err := parseTime(row["Span.End"])
 	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
 		return 0, err
-
 	}
 	dur := spanEnd.Sub(spanStart)
 	return dur, nil
@@ -250,7 +251,7 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 		}
 
 		if err := handleRow(values); err != nil {
-			return err
+			return fmt.Errorf("Failed to parse %v: %w", values, err)
 		}
 	}
 
