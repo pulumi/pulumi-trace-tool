@@ -2,10 +2,13 @@ package traces
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -68,8 +71,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 		var haveEngStart bool
 		var pulumiApiEndpoint string
 
-		// precompute metrics
-		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
+		precomputeMetricsFromRow := func(row map[string]string) error {
 
 			if row[filenameColumn] != f {
 				return nil
@@ -108,14 +110,14 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			}
 
 			return nil
-		})
-		if err != nil {
+		}
+
+		if err := readLargeCsvFile(csvFile,
+			tolerateFaults(csvFile+"#precompute", precomputeMetricsFromRow)); err != nil {
 			return err
 		}
 
-		// emit metrics
-		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
-
+		emitMetricsFromRow := func(row map[string]string) error {
 			if row[filenameColumn] != f {
 				return nil
 			}
@@ -180,9 +182,9 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			}
 
 			return nil
-		})
+		}
 
-		if err != nil {
+		if err := readLargeCsvFile(csvFile, emitMetricsFromRow); err != nil {
 			return err
 		}
 	}
@@ -251,11 +253,43 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 		}
 
 		if err := handleRow(values); err != nil {
-			return fmt.Errorf("Failed to parse %v: %w", values, err)
+			return err
 		}
 	}
 
 	return nil
+}
+
+func prettyPrintRow(indent string, row map[string]string) string {
+	var keys []string
+	var maxLenKey int
+	for k := range row {
+		if len(k) > maxLenKey {
+			maxLenKey = len(k)
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var buf bytes.Buffer
+	for _, k := range keys {
+		v := row[k]
+		if v != "" {
+			fmt.Fprintf(&buf, "%s%*s: %s\n", indent, maxLenKey, k, v)
+		}
+	}
+	return buf.String()
+}
+
+func tolerateFaults(csvFile string, handleRow func(map[string]string) error) func(map[string]string) error {
+	return func(row map[string]string) error {
+		if err := handleRow(row); err != nil {
+			log.Printf("WARN ignoring failure to parse a row from %s\n  Error: %v\n  Data:\n%s",
+				csvFile,
+				err,
+				prettyPrintRow("    ", row))
+		}
+		return nil
+	}
 }
 
 func writeMetricsToCsvWriter(data []map[string]string, writer io.Writer) error {
