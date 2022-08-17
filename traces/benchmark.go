@@ -122,7 +122,7 @@ func (benchmark *Benchmark) CommandArgs(commandName string) []string {
 }
 
 // If tracing is enabled, finds all *.trace files in `TracingDir` and
-// computes metrics, producing `TracingDir/merics.parquet.snappy`.
+// computes metrics, producing `TracingDir/metrics.parquet.snappy`.
 func ComputeMetrics() error {
 	if !IsTracingEnabled() {
 		return nil
