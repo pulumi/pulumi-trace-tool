@@ -184,7 +184,8 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			return nil
 		}
 
-		if err := readLargeCsvFile(csvFile, emitMetricsFromRow); err != nil {
+		if err := readLargeCsvFile(csvFile,
+			tolerateFaults(csvFile, emitMetricsFromRow)); err != nil {
 			return err
 		}
 	}
