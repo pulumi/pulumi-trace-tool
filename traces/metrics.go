@@ -112,8 +112,8 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			return nil
 		}
 
-		if err := readLargeCsvFile(csvFile,
-			tolerateFaults(csvFile+"#precompute", precomputeMetricsFromRow)); err != nil {
+		precomputeTolerant := tolerateFaults(csvFile+"#precompute", precomputeMetricsFromRow)
+		if err := readLargeCsvFile(csvFile, precomputeTolerant); err != nil {
 			return err
 		}
 
@@ -184,8 +184,8 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			return nil
 		}
 
-		if err := readLargeCsvFile(csvFile,
-			tolerateFaults(csvFile, emitMetricsFromRow)); err != nil {
+		emitTolerant := tolerateFaults(csvFile, emitMetricsFromRow)
+		if err := readLargeCsvFile(csvFile, emitTolerant); err != nil {
 			return err
 		}
 	}
@@ -261,6 +261,18 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 	return nil
 }
 
+// Formats a CSV data row as an easy-to-read string to emit in logs.
+// Empty fields are omitted, fields are aligned and sorted by name.
+//
+// Example output:
+//
+//                        Name: api/startUpdate
+//                         api: https://api.pulumi.com
+//                    filename: azure-classic-csharp-pulumi-destroy.trace
+//                      method: POST
+//                        path: /api/stacks/me/test-env2047447553/p-it-..
+//                responseCode: 200 OK
+//                       retry: false
 func prettyPrintRow(indent string, row map[string]string) string {
 	var keys []string
 	var maxLenKey int
@@ -281,7 +293,24 @@ func prettyPrintRow(indent string, row map[string]string) string {
 	return buf.String()
 }
 
-func tolerateFaults(csvFile string, handleRow func(map[string]string) error) func(map[string]string) error {
+// Allows to read CSV files ignoring individual row parse failures,
+// and logging them via log.Printf instead of returning an error.
+//
+// Intended use is to transform this code:
+//
+//     readLargeCsvFile(csvFile, parseRow)
+//
+// Into this code:
+//
+//     readLargeCsvFile(csvFile, tolerateFaults(csvFile, parseRow))
+//
+// The tolerateFaults code will process every row and return nil error
+// and log failed rows, instead of stopping at the first failed row
+// and returning an error.
+func tolerateFaults(
+	csvFile string,
+	handleRow func(map[string]string) error,
+) func(map[string]string) error {
 	return func(row map[string]string) error {
 		if err := handleRow(row); err != nil {
 			log.Printf("WARN ignoring failure to parse a row from %s\n  Error: %v\n  Data:\n%s",
