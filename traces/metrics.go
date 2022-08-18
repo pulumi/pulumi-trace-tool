@@ -2,10 +2,13 @@ package traces
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -68,8 +71,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 		var haveEngStart bool
 		var pulumiApiEndpoint string
 
-		// precompute metrics
-		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
+		precomputeMetricsFromRow := func(row map[string]string) error {
 
 			if row[filenameColumn] != f {
 				return nil
@@ -108,14 +110,14 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			}
 
 			return nil
-		})
-		if err != nil {
+		}
+
+		precomputeTolerant := tolerateFaults(csvFile+"#precompute", precomputeMetricsFromRow)
+		if err := readLargeCsvFile(csvFile, precomputeTolerant); err != nil {
 			return err
 		}
 
-		// emit metrics
-		err = readLargeCsvFile(csvFile, func(row map[string]string) error {
-
+		emitMetricsFromRow := func(row map[string]string) error {
 			if row[filenameColumn] != f {
 				return nil
 			}
@@ -180,9 +182,10 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 			}
 
 			return nil
-		})
+		}
 
-		if err != nil {
+		emitTolerant := tolerateFaults(csvFile, emitMetricsFromRow)
+		if err := readLargeCsvFile(csvFile, emitTolerant); err != nil {
 			return err
 		}
 	}
@@ -197,6 +200,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 func spanStart(row map[string]string) (time.Time, error) {
 	spanStart, err := parseTime(row["Span.Start"])
 	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.Start time: %w", err)
 		return time.Time{}, err
 	}
 	return spanStart, nil
@@ -209,8 +213,8 @@ func spanDuration(row map[string]string) (time.Duration, error) {
 	}
 	spanEnd, err := parseTime(row["Span.End"])
 	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
 		return 0, err
-
 	}
 	dur := spanEnd.Sub(spanStart)
 	return dur, nil
@@ -255,6 +259,67 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 	}
 
 	return nil
+}
+
+// Formats a CSV data row as an easy-to-read string to emit in logs.
+// Empty fields are omitted, fields are aligned and sorted by name.
+//
+// Example output:
+//
+//                        Name: api/startUpdate
+//                         api: https://api.pulumi.com
+//                    filename: azure-classic-csharp-pulumi-destroy.trace
+//                      method: POST
+//                        path: /api/stacks/me/test-env2047447553/p-it-..
+//                responseCode: 200 OK
+//                       retry: false
+func prettyPrintRow(indent string, row map[string]string) string {
+	var keys []string
+	var maxLenKey int
+	for k := range row {
+		if len(k) > maxLenKey {
+			maxLenKey = len(k)
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var buf bytes.Buffer
+	for _, k := range keys {
+		v := row[k]
+		if v != "" {
+			fmt.Fprintf(&buf, "%s%*s: %s\n", indent, maxLenKey, k, v)
+		}
+	}
+	return buf.String()
+}
+
+// Allows to read CSV files ignoring individual row parse failures,
+// and logging them via log.Printf instead of returning an error.
+//
+// Intended use is to transform this code:
+//
+//     readLargeCsvFile(csvFile, parseRow)
+//
+// Into this code:
+//
+//     readLargeCsvFile(csvFile, tolerateFaults(csvFile, parseRow))
+//
+// The tolerateFaults code will process every row and return nil error
+// and log failed rows, instead of stopping at the first failed row
+// and returning an error.
+func tolerateFaults(
+	csvFile string,
+	handleRow func(map[string]string) error,
+) func(map[string]string) error {
+	return func(row map[string]string) error {
+		if err := handleRow(row); err != nil {
+			log.Printf("WARN ignoring failure to parse a row from %s\n  Error: %v\n  Data:\n%s",
+				csvFile,
+				err,
+				prettyPrintRow("    ", row))
+		}
+		return nil
+	}
 }
 
 func writeMetricsToCsvWriter(data []map[string]string, writer io.Writer) error {
