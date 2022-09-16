@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/pulumi/pulumi-trace-tool/intervals"
 )
 
 type MetricsSink struct {
@@ -72,7 +74,10 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 		var haveEngStart bool
 		var pulumiApiEndpoint string
 
-		miscMetrics := map[string]time.Duration{}
+		miscMetrics := map[string]*intervals.TimeTracker{}
+		for _, metric := range metricsAccumulators() {
+			miscMetrics[metric] = &intervals.TimeTracker{}
+		}
 
 		precomputeMetricsFromRow := func(row map[string]string) error {
 
@@ -82,11 +87,13 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 
 			for rowName, metric := range metricsAccumulators() {
 				if row["Name"] == rowName {
-					dur, err := spanDuration(row)
+					iv, err := spanInterval(row)
 					if err != nil {
 						return err
 					}
-					miscMetrics[metric] = miscMetrics[metric] + dur
+					if err := miscMetrics[metric].Track(iv); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -172,7 +179,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				m[time_pulumi_api_ms] = ms(apiOverhead)
 
 				for k, v := range miscMetrics {
-					m[k] = ms(v)
+					m[k] = ms(v.TimeTaken())
 				}
 
 				if haveEngStart {
@@ -224,19 +231,38 @@ func spanStart(row map[string]string) (time.Time, error) {
 	return spanStart, nil
 }
 
+func spanEnd(row map[string]string) (time.Time, error) {
+	spanEnd, err := parseTime(row["Span.End"])
+	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
+		return time.Time{}, err
+	}
+	return spanEnd, nil
+}
+
+func spanInterval(row map[string]string) (intervals.Interval, error) {
+	spanStart, err := spanStart(row)
+	if err != nil {
+		return intervals.Interval{}, err
+	}
+	spanEnd, err := spanEnd(row)
+	if err != nil {
+		return intervals.Interval{}, err
+	}
+	return intervals.Interval{Start: spanStart, End: spanEnd}, nil
+}
+
 func spanDuration(row map[string]string) (time.Duration, error) {
 	spanStart, err := spanStart(row)
 	if err != nil {
 		return 0, err
 	}
-	spanEnd, err := parseTime(row["Span.End"])
+	spanEnd, err := spanEnd(row)
 	if err != nil {
-		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
 		return 0, err
 	}
 	dur := spanEnd.Sub(spanStart)
 	return dur, nil
-
 }
 
 func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) error {

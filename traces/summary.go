@@ -60,16 +60,16 @@ func Summary(traceFiles []string, filenameColumn string) error {
 	}()
 
 	return fr.Select(
-		"benchmark_name",
-		"benchmark_phase",
-		"time_total_ms",
-		"time_pulumi_api_ms",
-		"time_to_engine_ms",
-		"time_language_runtime_run_ms",
-		"time_patch_checkpoint_ms",
-		"time_get_required_plugins_ms",
-		"time_register_resource_ms",
-		"time_resource_provider_configure",
-		"time_resource_provider_create",
+		benchmark_name,
+		benchmark_phase,
+		time_total_ms,
+		time_pulumi_api_ms,
+		time_to_engine_ms,
+		time_language_runtime_run_ms,
+		time_patch_checkpoint_ms,
+		time_get_required_plugins_ms,
+		time_register_resource_ms,
+		time_resource_provider_configure_ms,
+		time_resource_provider_create_ms,
 	).ToCSV(os.Stdout)
 }
