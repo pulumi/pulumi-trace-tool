@@ -1,11 +1,11 @@
 package traces
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-
-	"github.com/tobgu/qframe"
 )
 
 func Summary(traceFiles []string, filenameColumn string) error {
@@ -13,23 +13,13 @@ func Summary(traceFiles []string, filenameColumn string) error {
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		if err := os.Remove(tempCsv.Name()); err != nil {
-			panic(err)
-		}
-	}()
+	defer noErr(os.Remove(tempCsv.Name()))
 
 	tempCsv2, err := ioutil.TempFile("", "pulumi-metrics")
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		if err := os.Remove(tempCsv2.Name()); err != nil {
-			panic(err)
-		}
-	}()
+	defer noErr(os.Remove(tempCsv2.Name()))
 
 	if err := ToCsv(traceFiles, tempCsv.Name(), filenameColumn); err != nil {
 		return fmt.Errorf("Failed converting trace files to CSV: %w", err)
@@ -50,16 +40,12 @@ func Summary(traceFiles []string, filenameColumn string) error {
 	if err != nil {
 		return err
 	}
+	defer ensureClosed(f)
 
-	fr := qframe.ReadCSV(f)
+	csvReader := csv.NewReader(f)
+	csvWriter := csv.NewWriter(os.Stdout)
 
-	defer func() {
-		if err := f.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
-	return fr.Select(
+	return csvSelectColumns([]string{
 		benchmark_name,
 		benchmark_phase,
 		time_total_ms,
@@ -70,6 +56,71 @@ func Summary(traceFiles []string, filenameColumn string) error {
 		time_get_required_plugins_ms,
 		time_register_resource_ms,
 		time_resource_provider_configure_ms,
-		time_resource_provider_create_ms,
-	).ToCSV(os.Stdout)
+	}, csvReader, csvWriter)
+}
+
+func noErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ensureClosed(x io.Closer) {
+	noErr(x.Close())
+}
+
+func csvSelectColumns(columns []string, reader *csv.Reader, writer *csv.Writer) error {
+	header, err := reader.Read()
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	colIndex := func(col string) int {
+		for i, h := range header {
+			if h == col {
+				return i
+			}
+		}
+		return -1
+	}
+
+	indices := []int{}
+	for _, c := range columns {
+		i := colIndex(c)
+		if i == -1 {
+			return fmt.Errorf("Unknown column: %s", c)
+		}
+		indices = append(indices, i)
+	}
+
+	selected := func(row []string) []string {
+		result := []string{}
+		for _, i := range indices {
+			result = append(result, row[i])
+		}
+		return result
+	}
+
+	if err := writer.Write(selected(header)); err != nil {
+		return err
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := writer.Write(selected(record)); err != nil {
+			return err
+		}
+
+		writer.Flush()
+	}
 }

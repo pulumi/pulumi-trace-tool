@@ -7,9 +7,7 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.5.1
 	github.com/pulumi/pulumi/sdk/v3 v3.5.1 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/tobgu/qframe v0.3.6
 	github.com/xitongsys/parquet-go v1.6.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20200817004010-026bad9b25d0
-	gopkg.in/src-d/go-git.v4 v4.13.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 )
