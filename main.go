@@ -96,6 +96,7 @@ var commands map[string]command = map[string]command{
 	"removelogs":  command{"removelogs", removeLogsCommand},
 	"extractlogs": command{"extractlogs", extractLogsCommand},
 	"metrics":     command{"metrics", metricsCommand},
+	"summary":     command{"summary", summaryCommand},
 }
 
 func main() {
