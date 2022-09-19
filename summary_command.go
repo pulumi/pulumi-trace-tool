@@ -8,10 +8,6 @@ import (
 
 func summaryCommand(flags *flag.FlagSet, args []string) error {
 	var filenameColumn string
-	// func toCsvCommand(flags *flag.FlagSet, args []string) error {
-	// 	var outputCsvFile, filenameColumn string
-
-	// flags.StringVar(&format, "file", "", "Format of the summary. Allowed values: csv")
 	flags.StringVar(&filenameColumn, "filenamecolumn", "filename", "Column name to write trace filename to")
 
 	if err := flags.Parse(args); err != nil {
