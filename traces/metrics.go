@@ -8,9 +8,12 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/pulumi/pulumi-trace-tool/intervals"
 )
 
 type MetricsSink struct {
@@ -66,10 +69,15 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 
 	for f := range files {
 
-		var logOverhead, apiOverhead, engDuration time.Duration
+		var apiOverhead, engDuration time.Duration
 		var engStart time.Time
 		var haveEngStart bool
 		var pulumiApiEndpoint string
+
+		miscMetrics := map[string]*intervals.TimeTracker{}
+		for _, metric := range metricsAccumulators() {
+			miscMetrics[metric] = &intervals.TimeTracker{}
+		}
 
 		precomputeMetricsFromRow := func(row map[string]string) error {
 
@@ -77,12 +85,16 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				return nil
 			}
 
-			if row["Name"] == "/pulumirpc.Engine/Log" {
-				dur, err := spanDuration(row)
-				if err != nil {
-					return err
+			for rowName, metric := range metricsAccumulators() {
+				if row["Name"] == rowName {
+					iv, err := spanInterval(row)
+					if err != nil {
+						return err
+					}
+					if err := miscMetrics[metric].Track(iv); err != nil {
+						return err
+					}
 				}
-				logOverhead += dur
 			}
 
 			if row["Name"] == "pulumi-plan" {
@@ -138,13 +150,6 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				// this is coming from `pulumi` CLI process, not a plugin
 				m[pulumi_process] = "pulumi"
 
-				// compute duration
-				dur, err := spanDuration(row)
-				if err != nil {
-					return err
-				}
-				m[time_total_ms] = ms(dur)
-
 				// copy labels if found in aliases
 				for k, v := range row {
 					col, includeCol := invAliases[k]
@@ -158,8 +163,10 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				// filename=aws-go-s3-folder-pulumi-update-initial.trace
 				// benchmark_name=aws-go-s3-folder
 				m[benchmark_phase] = ""
-				if strings.HasPrefix(row[filenameColumn], m[benchmark_name]+"-") {
-					s := strings.TrimPrefix(row[filenameColumn], m[benchmark_name]+"-")
+
+				f := path.Base(row[filenameColumn])
+				if strings.HasPrefix(f, m[benchmark_name]+"-") {
+					s := strings.TrimPrefix(f, m[benchmark_name]+"-")
 					if strings.HasSuffix(s, ".trace") {
 						s = strings.TrimSuffix(s, ".trace")
 						m[benchmark_phase] = s
@@ -170,7 +177,10 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				m[time_engine_ms] = ms(engDuration)
 				m[pulumi_api] = pulumiApiEndpoint
 				m[time_pulumi_api_ms] = ms(apiOverhead)
-				m[time_log_overhead_ms] = ms(logOverhead)
+
+				for k, v := range miscMetrics {
+					m[k] = ms(v.TimeTaken())
+				}
 
 				if haveEngStart {
 					m[time_to_engine_ms] = ms(engStart.Sub(t0))
@@ -197,6 +207,21 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 	return nil
 }
 
+// Map span name to the duration sum counter.
+func metricsAccumulators() map[string]string {
+	return map[string]string{
+		"pulumi":                         time_total_ms,
+		"/pulumirpc.Engine/Log":          time_log_overhead_ms,
+		"api/patchCheckpoint":            time_patch_checkpoint_ms,
+		"/pulumirpc.LanguageRuntime/Run": time_language_runtime_run_ms,
+
+		"/pulumirpc.LanguageRuntime/GetRequiredPlugins": time_get_required_plugins_ms,
+		"/pulumirpc.ResourceMonitor/RegisterResource":   time_register_resource_ms,
+		"/pulumirpc.ResourceProvider/Configure":         time_resource_provider_configure_ms,
+		"/pulumirpc.ResourceProvider/Create":            time_resource_provider_create_ms,
+	}
+}
+
 func spanStart(row map[string]string) (time.Time, error) {
 	spanStart, err := parseTime(row["Span.Start"])
 	if err != nil {
@@ -206,19 +231,38 @@ func spanStart(row map[string]string) (time.Time, error) {
 	return spanStart, nil
 }
 
+func spanEnd(row map[string]string) (time.Time, error) {
+	spanEnd, err := parseTime(row["Span.End"])
+	if err != nil {
+		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
+		return time.Time{}, err
+	}
+	return spanEnd, nil
+}
+
+func spanInterval(row map[string]string) (intervals.Interval, error) {
+	spanStart, err := spanStart(row)
+	if err != nil {
+		return intervals.Interval{}, err
+	}
+	spanEnd, err := spanEnd(row)
+	if err != nil {
+		return intervals.Interval{}, err
+	}
+	return intervals.Interval{Start: spanStart, End: spanEnd}, nil
+}
+
 func spanDuration(row map[string]string) (time.Duration, error) {
 	spanStart, err := spanStart(row)
 	if err != nil {
 		return 0, err
 	}
-	spanEnd, err := parseTime(row["Span.End"])
+	spanEnd, err := spanEnd(row)
 	if err != nil {
-		err = fmt.Errorf("Failed to parse Span.End time: %w", err)
 		return 0, err
 	}
 	dur := spanEnd.Sub(spanStart)
 	return dur, nil
-
 }
 
 func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) error {

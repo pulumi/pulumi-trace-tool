@@ -8,6 +8,13 @@ const time_log_overhead_ms = "time_log_overhead_ms"
 const time_pulumi_api_ms = "time_pulumi_api_ms"
 const time_to_engine_ms = "time_to_engine_ms"
 
+const time_patch_checkpoint_ms = "time_patch_checkpoint_ms"
+const time_language_runtime_run_ms = "time_language_runtime_run_ms"
+const time_get_required_plugins_ms = "time_get_required_plugins_ms"
+const time_register_resource_ms = "time_register_resource_ms"
+const time_resource_provider_configure_ms = "time_resource_provider_configure_ms"
+const time_resource_provider_create_ms = "time_resource_provider_create_ms"
+
 // Duration of the span marked `pulumi-plan`. This span seem to cover
 // plan and/or update operations.
 const time_engine_ms string = "time_engine_ms"
