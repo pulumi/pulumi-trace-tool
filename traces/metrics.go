@@ -60,7 +60,6 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -80,7 +79,6 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 		}
 
 		precomputeMetricsFromRow := func(row map[string]string) error {
-
 			if row[filenameColumn] != f {
 				return nil
 			}
@@ -310,13 +308,13 @@ func readLargeCsvFile(csvFile string, handleRow func(map[string]string) error) e
 //
 // Example output:
 //
-//                        Name: api/startUpdate
-//                         api: https://api.pulumi.com
-//                    filename: azure-classic-csharp-pulumi-destroy.trace
-//                      method: POST
-//                        path: /api/stacks/me/test-env2047447553/p-it-..
-//                responseCode: 200 OK
-//                       retry: false
+//	        Name: api/startUpdate
+//	         api: https://api.pulumi.com
+//	    filename: azure-classic-csharp-pulumi-destroy.trace
+//	      method: POST
+//	        path: /api/stacks/me/test-env2047447553/p-it-..
+//	responseCode: 200 OK
+//	       retry: false
 func prettyPrintRow(indent string, row map[string]string) string {
 	var keys []string
 	var maxLenKey int
@@ -342,11 +340,11 @@ func prettyPrintRow(indent string, row map[string]string) string {
 //
 // Intended use is to transform this code:
 //
-//     readLargeCsvFile(csvFile, parseRow)
+//	readLargeCsvFile(csvFile, parseRow)
 //
 // Into this code:
 //
-//     readLargeCsvFile(csvFile, tolerateFaults(csvFile, parseRow))
+//	readLargeCsvFile(csvFile, tolerateFaults(csvFile, parseRow))
 //
 // The tolerateFaults code will process every row and return nil error
 // and log failed rows, instead of stopping at the first failed row

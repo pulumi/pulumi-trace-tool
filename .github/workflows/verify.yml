@@ -1,0 +1,35 @@
+name: "Verify"
+
+jobs:
+  build_and_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+      - name: actionlint
+        uses: raven-actions/actionlint@v1
+      - name: setup go # required for golangci-lint-action
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: false # must be false to co-operate with golangci-lint
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55.1
+          args: --verbose
+      - name: Run Lint
+        run: make lint
+      - name: Build
+        run: make build
+      - name: Run Tests
+        run: make test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main

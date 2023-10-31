@@ -75,7 +75,12 @@ func metricsCommand(flags *flag.FlagSet, args []string) error {
 
 	flags.StringVar(&csvFile, "csv", "", "CSV file with data to aggreate into metrics")
 	flags.StringVar(&filenameColumn, "filenamecolumn", "tracefile", "Column name where trace filename was recorded")
-	flags.StringVar(&parquetFile, "parquet", "", "Path to write metrics in parquet format to; by default, write CSV to stdout")
+	flags.StringVar(
+		&parquetFile,
+		"parquet",
+		"",
+		"Path to write metrics in parquet format to; by default, write CSV to stdout",
+	)
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -90,19 +95,19 @@ func metricsCommand(flags *flag.FlagSet, args []string) error {
 	return tr.Metrics(csvFile, filenameColumn, sink)
 }
 
-var commands map[string]command = map[string]command{
-	"tocsv":       command{"tocsv", toCsvCommand},
-	"toparquet":   command{"toparquet", toParquetCommand},
-	"removelogs":  command{"removelogs", removeLogsCommand},
-	"extractlogs": command{"extractlogs", extractLogsCommand},
-	"metrics":     command{"metrics", metricsCommand},
-	"summary":     command{"summary", summaryCommand},
+var commands = map[string]command{
+	"tocsv":       {"tocsv", toCsvCommand},
+	"toparquet":   {"toparquet", toParquetCommand},
+	"removelogs":  {"removelogs", removeLogsCommand},
+	"extractlogs": {"extractlogs", extractLogsCommand},
+	"metrics":     {"metrics", metricsCommand},
+	"summary":     {"summary", summaryCommand},
 }
 
 func main() {
 	exitCannotParseSubcommand := func() {
 		var commandNames []string
-		for name, _ := range commands {
+		for name := range commands {
 			commandNames = append(commandNames, name)
 		}
 
