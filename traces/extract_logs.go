@@ -17,7 +17,7 @@ func ExtractLogs(inputFilePath string) error {
 		return err
 	}
 
-	walkTraces(traces, func(tr *appdash.Trace) error {
+	err = walkTraces(traces, func(tr *appdash.Trace) error {
 		if isEngineLogTrace(tr) {
 			var msg, time string
 			msg = ""
@@ -34,6 +34,10 @@ func ExtractLogs(inputFilePath string) error {
 		}
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -4,18 +4,17 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
 func Summary(traceFiles []string, filenameColumn string) error {
-	tempCsv, err := ioutil.TempFile("", "pulumi-decoded-traces")
+	tempCsv, err := os.CreateTemp("", "pulumi-decoded-traces")
 	if err != nil {
 		return err
 	}
 	defer noErr(os.Remove(tempCsv.Name()))
 
-	tempCsv2, err := ioutil.TempFile("", "pulumi-metrics")
+	tempCsv2, err := os.CreateTemp("", "pulumi-metrics")
 	if err != nil {
 		return err
 	}

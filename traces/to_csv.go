@@ -73,7 +73,7 @@ func detectAnnotationNames(inputTraceFiles []string) ([]string, error) {
 	annotations := make(map[string]int)
 
 	detectAnnotations := func(t *appdash.Trace) error {
-		for k, _ := range t.Span.Annotations.StringMap() {
+		for k := range t.Span.Annotations.StringMap() {
 			annotations[k] = annotations[k] + 1
 		}
 		return nil
@@ -86,7 +86,7 @@ func detectAnnotationNames(inputTraceFiles []string) ([]string, error) {
 	}
 
 	var res []string
-	for k, _ := range annotations {
+	for k := range annotations {
 		res = append(res, k)
 	}
 	return res, nil

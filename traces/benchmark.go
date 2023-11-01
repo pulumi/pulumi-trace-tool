@@ -6,13 +6,13 @@ package traces
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Env variable specifying the folder where trace output should go. If
@@ -139,14 +139,14 @@ func ComputeMetrics() error {
 		return wrap(err)
 	}
 
-	defer os.Chdir(cwd)
+	defer contract.IgnoreError(os.Chdir(cwd))
 
 	err = os.Chdir(dir)
 	if err != nil {
 		return wrap(err)
 	}
 
-	files, err := ioutil.ReadDir(".")
+	files, err := os.ReadDir(".")
 	if err != nil {
 		return wrap(err)
 	}

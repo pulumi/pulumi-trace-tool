@@ -137,7 +137,6 @@ func writeParquetRecords(filePath string, records []ParquetRecord) error {
 	}
 
 	fw, err := local.NewLocalFileWriter(filePath)
-
 	if err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func writeParquetRecords(filePath string, records []ParquetRecord) error {
 		return err
 	}
 
-	pw.RowGroupSize = 128 * 1024 * 1024 //128M
+	pw.RowGroupSize = 128 * 1024 * 1024 // 128M
 	pw.CompressionType = parquet.CompressionCodec_SNAPPY
 
 	for _, r := range records {

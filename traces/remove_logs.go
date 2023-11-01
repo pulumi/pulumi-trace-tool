@@ -18,12 +18,18 @@ func RemoveLogs(inputFilePath, outputFilePath string) error {
 	if outputFilePath != "" {
 		newStore := appdash.NewMemoryStore()
 
-		walkTraces(traces, func(tr *appdash.Trace) error {
+		err = walkTraces(traces, func(tr *appdash.Trace) error {
 			if !isEngineLogTrace(tr) {
-				newStore.Collect(tr.ID, tr.Annotations...)
+				err = newStore.Collect(tr.ID, tr.Annotations...)
+				if err != nil {
+					return err
+				}
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		err = writeMemoryStore(outputFilePath, newStore)
 		if err != nil {

@@ -1,0 +1,24 @@
+linters:
+  enable:
+  - errcheck
+  - goconst
+  - gofmt
+  - gosec
+  - govet
+  - ineffassign
+  - lll
+  - megacheck
+  - misspell
+  - nakedret
+  - revive
+  - unconvert
+  - unused
+  enable-all: false
+issues:
+  exclude-rules:
+    # Exclude noisy `var-naming` messages.
+    - linters:
+        - revive
+      text: "var-naming:"
+run:
+  timeout: 20m
