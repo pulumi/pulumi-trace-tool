@@ -68,7 +68,8 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 
 	for f := range files {
 
-		var apiOverhead, engDuration time.Duration
+		var engDuration time.Duration
+		apiOverhead := &intervals.TimeTracker{}
 		var engStart time.Time
 		var haveEngStart bool
 		var pulumiApiEndpoint string
@@ -112,11 +113,13 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 
 			if row["api"] != "" {
 				pulumiApiEndpoint = row["api"]
-				dur, err := spanDuration(row)
+				iv, err := spanInterval(row)
 				if err != nil {
 					return err
 				}
-				apiOverhead += dur
+				if err := apiOverhead.Track(iv); err != nil {
+					return err
+				}
 			}
 
 			return nil
@@ -174,7 +177,7 @@ func Metrics(csvFile string, filenameColumn string, sink MetricsSink) error {
 				// use pre-computed things here
 				m[time_engine_ms] = ms(engDuration)
 				m[pulumi_api] = pulumiApiEndpoint
-				m[time_pulumi_api_ms] = ms(apiOverhead)
+				m[time_pulumi_api_ms] = ms(apiOverhead.TimeTaken())
 
 				for k, v := range miscMetrics {
 					m[k] = ms(v.TimeTaken())
