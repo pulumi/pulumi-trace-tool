@@ -30,9 +30,10 @@ for the full list. Some notable ones:
 - **`benchmark_phase`** — the phase of a `ProgramTest` run. A single `ProgramTest` runs multiple
   `pulumi` invocations, distinguishing `pulumi-preview-initial`, `pulumi-preview-empty`, and other
   phases.
-- **`time_to_engine_ms`** — the interval between the benchmark starting and the span covering
-  engine work starting; indicative of init and service-communication overhead.
-- **`time_engine_ms`** — the duration of the span covering the engine work.
+- **`time_to_engine_ms`** — the interval between the benchmark starting and the `pulumi-plan`
+  engine span starting; indicative of init and service-communication overhead.
+- **`time_engine_ms`** — the duration of the span marked `pulumi-plan`, which appears to cover
+  plan and/or update work.
 - **`time_pulumi_api_ms`** — total time spent in requests to the Pulumi Service backend
   (overlapping requests are counted once, not summed).
 - **`time_total_ms`** — total command wall time.
@@ -42,7 +43,7 @@ for the full list. Some notable ones:
 Pulumi runs CLI benchmarks in CI and feeds their traces through this tool. The benchmarks live in:
 
 - [`pulumi/examples` — `performance_test.go`](https://github.com/pulumi/examples/blob/master/misc/test/performance_test.go)
-- [`pulumi/templates` — `template_test.go`](https://github.com/pulumi/templates/blob/master/tests/template_test.go)
+- [`pulumi/templates` — `performance_test.go`](https://github.com/pulumi/templates/blob/master/tests/perf/performance_test.go)
 
 The helper code lives here in `pulumi-trace-tool`, but could be upstreamed into `pulumi/pulumi`
 eventually.
